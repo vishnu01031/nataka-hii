@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My orders — Nataka Hii</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar" id="topbar"></header>
+<main class="wrap">
+  <div class="page-head">
+    <div><h1>My orders</h1><p>Track each store's shipment and review what you received.</p></div>
+  </div>
+  <div id="orderList"></div>
+</main>
+<script src="js/common.js"></script>
+<script>
+  requireRole('customer');
+  renderTopbar('orders.html');
+  const list = document.getElementById('orderList');
+
+  async function load() {
+    const orders = await api('/customer/orders');
+    if (!orders.length) {
+      list.innerHTML = '<div class="empty-state"><p>You haven\'t ordered anything yet.</p><p class="empty-sub"><a href="index.html" style="color:var(--orange)">Browse the store</a></p></div>';
+      return;
+    }
+    const details = await Promise.all(orders.map(o => api(`/customer/orders/${o.order_id}`)));
+    list.innerHTML = details.map(renderOrder).join('');
+  }
+
+  function renderOrder(o) {
+    const groups = {};
+    o.items.forEach(i => (groups[i.vendor_id] ||= { name: i.business_name, items: [] }).items.push(i));
+    const pay = o.payments[o.payments.length - 1];
+    const a = o.address;
+    return `
+      <article class="order-card">
+        <div class="order-head">
+          <div><div class="id">Order #${o.order_id}</div><div class="meta">Placed ${dateStr(o.order_date)} · ${o.item_count} item${o.item_count > 1 ? 's' : ''}</div></div>
+          ${badge(o.order_status)}
+        </div>
+        <div class="order-body">
+          ${Object.entries(groups).map(([vid, g]) => {
+            const s = o.shipments.find(x => String(x.vendor_id) === vid);
+            return `
+            <div class="vendor-group">
+              <h4>${escapeHtml(g.name)}
+                <span class="ship-info">${s ? `${escapeHtml(s.courier_name)} · ${escapeHtml(s.tracking_number)}${s.delivered_date ? ` · delivered ${dateStr(s.delivered_date)}` : ` · shipped ${dateStr(s.shipped_date)}`}` : 'Not shipped yet'}</span></h4>
+              ${g.items.map(i => `
+                <div class="order-line">
+                  <div>
+                    <div>${escapeHtml(i.product_name)} <span class="muted">× ${i.quantity}</span></div>
+                    ${i.rating ? `<div class="small">${stars(i.rating)} <span class="muted">${escapeHtml(i.comment || '')}</span></div>`
+                      : i.item_status === 'delivered' ? reviewForm(i.order_item_id) : ''}
+                  </div>
+                  <div class="status-cell">${badge(i.item_status)}</div>
+                  <div class="num">${money(i.subtotal)}</div>
+                </div>`).join('')}
+            </div>`; }).join('')}
+        </div>
+        <div class="order-foot">
+          <div class="address-block">To ${escapeHtml(a.full_name)}, ${escapeHtml([a.address_line1, a.city, a.postal_code].join(', '))}</div>
+          <div>${pay ? `${escapeHtml(pay.payment_method)} ${badge(pay.payment_status)}` : ''} &nbsp; <strong>${money(o.total_amount)}</strong></div>
+        </div>
+      </article>`;
+  }
+
+  function reviewForm(id) {
+    return `
+      <form class="review-form" data-item="${id}">
+        <span class="star-input" role="radiogroup" aria-label="Rating">
+          ${[5, 4, 3, 2, 1].map(n => `<input type="radio" name="r${id}" id="r${id}_${n}" value="${n}" required><label for="r${id}_${n}" title="${n} star${n > 1 ? 's' : ''}">★</label>`).join('')}
+        </span>
+        <input type="text" name="comment" placeholder="What did you think?" maxlength="1000" aria-label="Review">
+        <button class="btn-primary btn-sm" type="submit">Post review</button>
+      </form>`;
+  }
+
+  list.addEventListener('submit', async e => {
+    const form = e.target.closest('.review-form');
+    if (!form) return;
+    e.preventDefault();
+    const rating = form.querySelector('input[type=radio]:checked');
+    if (!rating) return toast('Choose a star rating first.', true);
+    try {
+      await api('/customer/reviews', { method: 'POST', body: {
+        order_item_id: Number(form.dataset.item), rating: Number(rating.value), comment: form.comment.value.trim()
+      }});
+      toast('Review posted');
+      load();
+    } catch (err) { toast(err.message, true); }
+  });
+
+  load().catch(err => toast(err.message, true));
+</script>
+</body>
+</html>

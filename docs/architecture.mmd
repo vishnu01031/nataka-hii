@@ -1,0 +1,41 @@
+flowchart LR
+    subgraph Users["Users (browser)"]
+        C["Customer"]
+        V["Vendor"]
+        A["Admin"]
+    end
+
+    subgraph GitHub["GitHub"]
+        R["Repository<br/>source + Dockerfile"]
+        GA["GitHub Actions<br/>CI/CD workflow"]
+    end
+
+    subgraph Azure["Microsoft Azure  (resource group: rg-nataka-hii)"]
+        ACR["Azure Container Registry<br/>nataka-hii image"]
+        subgraph AS["Azure App Service (Linux, container)"]
+            APP["Node.js / Express container<br/>REST API + static frontend<br/>JWT role-based access"]
+        end
+        SQL[("Azure SQL Database<br/>ecommerce_db<br/>12 tables, 2 views,<br/>1 stored procedure, 1 trigger")]
+        BLOB[("Azure Blob Storage<br/>private container<br/>product-images")]
+        AI["Application Insights<br/>+ Azure Monitor<br/>requests, SQL calls, errors"]
+    end
+
+    C & V & A -- "HTTPS" --> APP
+    R -- "git push" --> GA
+    GA -- "docker build + push" --> ACR
+    GA -- "deploy new image" --> AS
+    ACR -- "pull image" --> APP
+    APP -- "TDS 1433, encrypted<br/>parameterised SQL + transactions" --> SQL
+    APP -- "upload / stream images" --> BLOB
+    APP -. "telemetry" .-> AI
+
+    classDef azure fill:#e8f1fb,stroke:#0078d4,color:#0b2b4d
+    classDef gh fill:#f1f0f7,stroke:#24246e,color:#14144a
+    classDef user fill:#fff3ee,stroke:#ff5a1f,color:#14144a
+    class ACR,APP,SQL,BLOB,AI azure
+    class R,GA gh
+    class C,V,A user
+    style Users fill:#ffffff,stroke:#e3e3ee
+    style GitHub fill:#ffffff,stroke:#e3e3ee
+    style Azure fill:#f7fbff,stroke:#0078d4
+    style AS fill:#ffffff,stroke:#0078d4,stroke-dasharray: 4 3

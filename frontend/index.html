@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nataka Hii — shop local sellers</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar" id="topbar"></header>
+
+<main class="wrap">
+  <section class="shop-hero">
+    <div>
+      <h1>Shop straight from independent sellers</h1>
+      <p>Every product here is listed and shipped by the store that makes or sources it. One cart, one checkout.</p>
+    </div>
+    <div class="vendor-count"><strong id="sellerCount">–</strong>stores selling today</div>
+  </section>
+
+  <div class="filters">
+    <div class="search-row"><input type="search" id="searchInput" placeholder="Search products or stores" aria-label="Search"></div>
+    <select id="sortSelect" aria-label="Sort">
+      <option value="new">Newest first</option>
+      <option value="price_asc">Price: low to high</option>
+      <option value="price_desc">Price: high to low</option>
+      <option value="rating">Top rated</option>
+    </select>
+  </div>
+  <div class="chips" id="categoryChips"></div>
+
+  <div id="emptyState" class="empty-state hidden">
+    <p id="emptyTitle">No products match.</p>
+    <p class="empty-sub">Try another search or category.</p>
+  </div>
+  <div class="product-grid" id="productGrid"></div>
+</main>
+
+<!-- Product detail -->
+<div class="modal-backdrop hidden" id="productModal">
+  <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="pdName">
+    <div class="modal-head"><span></span><button class="icon-btn" data-close="productModal" aria-label="Close">×</button></div>
+    <div id="productDetail"></div>
+  </div>
+</div>
+
+<!-- Cart + checkout drawer -->
+<div class="drawer-backdrop hidden" id="cartDrawer">
+  <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="drawerTitle">
+    <div class="drawer-head">
+      <h2 id="drawerTitle">Your cart</h2>
+      <button class="icon-btn" data-close="cartDrawer" aria-label="Close">×</button>
+    </div>
+    <div class="drawer-body" id="drawerBody"></div>
+    <div class="drawer-foot" id="drawerFoot"></div>
+  </aside>
+</div>
+
+<script src="js/common.js"></script>
+<script src="js/shop.js"></script>
+</body>
+</html>

@@ -1,0 +1,47 @@
+# Local development: SQL Server 2022 (same engine as Azure SQL Database) + the app.
+#   docker compose up --build      ->  http://localhost:8080
+services:
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: nataka_sql
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Nataka@Local123"
+      MSSQL_PID: "Developer"
+    ports:
+      - "1433:1433"
+    volumes:
+      - sql_data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q \"SELECT 1\" || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
+
+  app:
+    build: .
+    container_name: nataka_app
+    ports:
+      - "8080:8080"
+    environment:
+      DB_SERVER: db
+      DB_PORT: "1433"
+      DB_USER: sa
+      DB_PASSWORD: "Nataka@Local123"
+      DB_NAME: ecommerce_db
+      DB_TRUST_SERVER_CERT: "true"   # local container uses a self-signed certificate
+      DB_CREATE: "true"              # create the database inside the container (Azure creates it for you)
+      INIT_DB: "true"                # create tables + demo data on first start
+      JWT_SECRET: "local_dev_secret_change_me"
+      # Uncomment to use Azure Blob Storage instead of the local uploads folder:
+      # AZURE_STORAGE_CONNECTION_STRING: "DefaultEndpointsProtocol=https;AccountName=...;AccountKey=...;EndpointSuffix=core.windows.net"
+    volumes:
+      - uploads_data:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  sql_data:
+  uploads_data:

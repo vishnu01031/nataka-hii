@@ -1,0 +1,120 @@
+erDiagram
+    USERS ||--o| VENDORS : "has (1:1)"
+    USERS ||--o{ ADDRESSES : saves
+    USERS ||--o{ CART_ITEMS : "adds to cart"
+    USERS ||--o{ ORDERS : places
+    VENDORS ||--o{ PRODUCTS : owns
+    VENDORS ||--o{ SHIPMENTS : ships
+    CATEGORIES ||--o{ PRODUCTS : contains
+    PRODUCTS ||--o{ PRODUCT_IMAGES : has
+    PRODUCTS ||--o{ CART_ITEMS : "is in"
+    PRODUCTS ||--o{ ORDER_ITEMS : "refers to"
+    ADDRESSES ||--o{ ORDERS : "ships to"
+    ORDERS ||--|{ ORDER_ITEMS : contains
+    ORDERS ||--o{ PAYMENTS : "paid by"
+    ORDERS ||--o{ SHIPMENTS : "fulfilled by"
+    ORDER_ITEMS ||--o| REVIEWS : "reviewed in"
+
+    USERS {
+        int user_id PK
+        nvarchar name
+        nvarchar email UK
+        nvarchar password_hash
+        nvarchar role "admin|vendor|customer"
+        bit is_active
+        datetime2 created_at
+    }
+    VENDORS {
+        int vendor_id PK
+        int user_id FK,UK
+        nvarchar business_name
+        nvarchar description
+        nvarchar logo_url
+        nvarchar approval_status "pending|approved|rejected"
+        datetime2 created_at
+    }
+    CATEGORIES {
+        int category_id PK
+        nvarchar name UK
+        nvarchar description
+    }
+    PRODUCTS {
+        int product_id PK
+        int vendor_id FK
+        int category_id FK
+        nvarchar name
+        nvarchar description
+        decimal price "CHECK >= 0"
+        int stock_quantity "CHECK >= 0"
+        bit is_active
+        datetime2 created_at
+        datetime2 updated_at
+    }
+    PRODUCT_IMAGES {
+        int image_id PK
+        int product_id FK
+        nvarchar image_url
+        bit is_primary "one per product"
+        datetime2 created_at
+    }
+    ADDRESSES {
+        int address_id PK
+        int user_id FK
+        nvarchar full_name
+        nvarchar phone
+        nvarchar address_line1
+        nvarchar address_line2
+        nvarchar city
+        nvarchar state
+        nvarchar postal_code
+        nvarchar country
+        bit is_default
+    }
+    CART_ITEMS {
+        int cart_item_id PK
+        int user_id FK
+        int product_id FK
+        int quantity "CHECK > 0"
+        datetime2 added_at
+    }
+    ORDERS {
+        int order_id PK
+        int user_id FK
+        int address_id FK
+        datetime2 order_date
+        decimal total_amount
+    }
+    ORDER_ITEMS {
+        int order_item_id PK
+        int order_id FK
+        int product_id FK
+        int quantity "CHECK > 0"
+        decimal unit_price "price at purchase"
+        decimal subtotal "computed"
+        nvarchar item_status "pending|shipped|delivered|cancelled"
+    }
+    PAYMENTS {
+        int payment_id PK
+        int order_id FK
+        nvarchar payment_method "UPI|CARD|NETBANKING|COD"
+        nvarchar transaction_id UK
+        decimal amount
+        nvarchar payment_status "pending|success|failed|refunded"
+        datetime2 payment_date
+    }
+    SHIPMENTS {
+        int shipment_id PK
+        int order_id FK
+        int vendor_id FK
+        nvarchar courier_name
+        nvarchar tracking_number
+        datetime2 shipped_date
+        datetime2 delivered_date
+    }
+    REVIEWS {
+        int review_id PK
+        int order_item_id FK,UK
+        tinyint rating "CHECK 1-5"
+        nvarchar comment
+        datetime2 created_at
+    }

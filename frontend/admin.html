@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — Nataka Hii</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar" id="topbar"></header>
+<main class="wrap">
+  <div class="tabs" role="tablist">
+    <button class="tab active" data-tab="overview" role="tab">Overview</button>
+    <button class="tab" data-tab="vendors" role="tab">Vendors <span class="count hidden" id="pendingCount"></span></button>
+    <button class="tab" data-tab="categories" role="tab">Categories</button>
+    <button class="tab" data-tab="users" role="tab">Users</button>
+    <button class="tab" data-tab="orders" role="tab">Orders</button>
+  </div>
+
+  <section id="tab-overview">
+    <div class="stats" id="stats"></div>
+    <div class="two-col">
+      <div class="box"><h3>Sales by category</h3><div id="byCategory"></div></div>
+      <div class="box"><h3>Top stores</h3><div id="topVendors"></div></div>
+    </div>
+  </section>
+
+  <section id="tab-vendors" class="hidden">
+    <div class="page-head"><div><p>New stores can't log in or list products until you approve them.</p></div></div>
+    <div class="table-wrap"><table class="data">
+      <thead><tr><th>Store</th><th>Owner</th><th>Products</th><th>Applied</th><th>Status</th><th></th></tr></thead>
+      <tbody id="vendorRows"></tbody></table></div>
+  </section>
+
+  <section id="tab-categories" class="hidden">
+    <form id="catForm" class="panel-head" style="justify-content:flex-start">
+      <div class="search-row" style="max-width:260px"><input name="name" placeholder="New category name" required aria-label="Category name"></div>
+      <div class="search-row" style="max-width:360px"><input name="description" placeholder="Short description (optional)" aria-label="Description"></div>
+      <button class="btn-primary" type="submit">Add category</button>
+    </form>
+    <div class="table-wrap"><table class="data">
+      <thead><tr><th>Category</th><th>Description</th><th class="num">Live products</th><th></th></tr></thead>
+      <tbody id="catRows"></tbody></table></div>
+  </section>
+
+  <section id="tab-users" class="hidden">
+    <div class="table-wrap"><table class="data">
+      <thead><tr><th>Name</th><th>Email</th><th>Role</th><th class="num">Orders</th><th>Joined</th><th>Status</th><th></th></tr></thead>
+      <tbody id="userRows"></tbody></table></div>
+  </section>
+
+  <section id="tab-orders" class="hidden">
+    <div class="table-wrap"><table class="data">
+      <thead><tr><th>Order</th><th>Customer</th><th>Date</th><th class="num">Items</th><th>Payment</th><th>Status</th><th class="num">Total</th></tr></thead>
+      <tbody id="orderRows"></tbody></table></div>
+    <p class="muted small" style="margin-top:12px">Order status is derived from item statuses by the <code>vw_order_overview</code> view.</p>
+  </section>
+</main>
+
+<script src="js/common.js"></script>
+<script>
+  const me = requireRole('admin');
+  renderTopbar('admin.html');
+
+  const loaders = { overview: loadOverview, vendors: loadVendors, categories: loadCategories, users: loadUsers, orders: loadOrders };
+  document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.toggle('active', x === t));
+    Object.keys(loaders).forEach(n => document.getElementById(`tab-${n}`).classList.toggle('hidden', n !== t.dataset.tab));
+    loaders[t.dataset.tab]().catch(err => toast(err.message, true));
+  }));
+
+  function bars(rows, label, value, fmt) {
+    if (!rows.length) return '<p class="muted small">No sales yet.</p>';
+    const max = Math.max(1, ...rows.map(r => Number(r[value])));
+    return rows.map(r => `<div class="bar-row"><span>${escapeHtml(r[label])}</span>
+      <span class="bar"><span style="width:${(Number(r[value]) / max) * 100}%"></span></span>
+      <span class="amt">${fmt(r[value])}</span></div>`).join('');
+  }
+
+  async function loadOverview() {
+    const s = await api('/admin/stats');
+    document.getElementById('stats').innerHTML = `
+      <div class="stat accent"><div class="label">Payments received</div><div class="value">${money(s.revenue)}</div></div>
+      <div class="stat"><div class="label">Orders</div><div class="value">${s.orders}</div></div>
+      <div class="stat"><div class="label">Customers</div><div class="value">${s.customers}</div></div>
+      <div class="stat"><div class="label">Approved stores</div><div class="value">${s.vendors}</div></div>
+      <div class="stat"><div class="label">Live products</div><div class="value">${s.live_products}</div></div>`;
+    document.getElementById('byCategory').innerHTML = bars(s.by_category, 'category', 'revenue', money);
+    document.getElementById('topVendors').innerHTML = bars(s.top_vendors, 'business_name', 'revenue', money);
+    const pc = document.getElementById('pendingCount');
+    pc.textContent = s.pending_vendors;
+    pc.classList.toggle('hidden', !s.pending_vendors);
+  }
+
+  async function loadVendors() {
+    const vendors = await api('/admin/vendors');
+    document.getElementById('vendorRows').innerHTML = vendors.map(v => `
+      <tr data-id="${v.vendor_id}">
+        <td><strong>${escapeHtml(v.business_name)}</strong><div class="small muted">${escapeHtml(v.description || '')}</div></td>
+        <td>${escapeHtml(v.owner_name)}<div class="small muted">${escapeHtml(v.email)}</div></td>
+        <td class="num">${v.product_count}</td>
+        <td>${dateStr(v.created_at)}</td>
+        <td>${badge(v.approval_status)}</td>
+        <td><div class="row-actions">
+          ${v.approval_status !== 'approved' ? '<button class="btn-primary btn-sm" data-status="approved">Approve</button>' : ''}
+          ${v.approval_status !== 'rejected' ? '<button class="btn-ghost btn-sm" data-status="rejected">Reject</button>' : ''}
+        </div></td>
+      </tr>`).join('');
+  }
+  document.getElementById('vendorRows').addEventListener('click', async e => {
+    const status = e.target.dataset.status;
+    if (!status) return;
+    try {
+      const r = await api(`/admin/vendors/${e.target.closest('tr').dataset.id}`, { method: 'PATCH', body: { approval_status: status } });
+      toast(r.message);
+      loadVendors(); loadOverview();
+    } catch (err) { toast(err.message, true); }
+  });
+
+  async function loadCategories() {
+    const cats = await api('/categories');
+    document.getElementById('catRows').innerHTML = cats.map(c => `
+      <tr data-id="${c.category_id}">
+        <td><strong>${escapeHtml(c.name)}</strong></td>
+        <td class="muted">${escapeHtml(c.description || '')}</td>
+        <td class="num">${c.product_count}</td>
+        <td><div class="row-actions"><button class="btn-ghost btn-sm" data-delete>Delete</button></div></td>
+      </tr>`).join('');
+  }
+  document.getElementById('catForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    try {
+      const r = await api('/categories', { method: 'POST', body: Object.fromEntries(new FormData(e.target)) });
+      toast(r.message); e.target.reset(); loadCategories();
+    } catch (err) { toast(err.message, true); }
+  });
+  document.getElementById('catRows').addEventListener('click', async e => {
+    if (!e.target.hasAttribute('data-delete')) return;
+    try {
+      const r = await api(`/categories/${e.target.closest('tr').dataset.id}`, { method: 'DELETE' });
+      toast(r.message); loadCategories();
+    } catch (err) { toast(err.message, true); }
+  });
+
+  async function loadUsers() {
+    const users = await api('/admin/users');
+    document.getElementById('userRows').innerHTML = users.map(u => `
+      <tr data-id="${u.user_id}">
+        <td>${escapeHtml(u.name)}</td>
+        <td class="muted">${escapeHtml(u.email)}</td>
+        <td>${badge(u.role, 'role')}</td>
+        <td class="num">${u.order_count}</td>
+        <td>${dateStr(u.created_at)}</td>
+        <td>${u.is_active ? badge('active', 'ok') : badge('inactive')}</td>
+        <td><div class="row-actions">${u.user_id === me.userId ? '' :
+          `<button class="btn-ghost btn-sm" data-active="${u.is_active ? 0 : 1}">${u.is_active ? 'Deactivate' : 'Activate'}</button>`}</div></td>
+      </tr>`).join('');
+  }
+  document.getElementById('userRows').addEventListener('click', async e => {
+    if (e.target.dataset.active === undefined) return;
+    try {
+      const r = await api(`/admin/users/${e.target.closest('tr').dataset.id}`, { method: 'PATCH', body: { is_active: e.target.dataset.active === '1' } });
+      toast(r.message); loadUsers();
+    } catch (err) { toast(err.message, true); }
+  });
+
+  async function loadOrders() {
+    const orders = await api('/admin/orders');
+    document.getElementById('orderRows').innerHTML = orders.length ? orders.map(o => `
+      <tr>
+        <td>#${o.order_id}</td>
+        <td>${escapeHtml(o.customer_name)}</td>
+        <td>${dateStr(o.order_date)}</td>
+        <td class="num">${o.item_count}</td>
+        <td>${escapeHtml(o.payment_method || '')} ${o.payment_status ? badge(o.payment_status) : ''}</td>
+        <td>${badge(o.order_status)}</td>
+        <td class="num">${money(o.total_amount)}</td>
+      </tr>`).join('') : '<tr><td colspan="7" class="muted">No orders yet.</td></tr>';
+  }
+
+  loadOverview().catch(err => toast(err.message, true));
+</script>
+</body>
+</html>

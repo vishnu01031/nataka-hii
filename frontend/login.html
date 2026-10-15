@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Log in — Nataka Hii</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="auth-page">
+  <div class="auth-card">
+    <div class="auth-logo"><a class="logo" href="index.html" style="text-decoration:none"><span class="navy">Nataka</span> <span class="orange">Hii</span></a></div>
+    <div class="auth-tag">One marketplace, many local sellers</div>
+    <h1>Log in</h1>
+
+    <p class="auth-error hidden" id="loginError"></p>
+
+    <form id="loginForm">
+      <label>Email <input type="email" id="email" required autocomplete="username"></label>
+      <label>Password <input type="password" id="password" required autocomplete="current-password"></label>
+      <button type="submit" class="btn-primary" id="loginBtn">Log in</button>
+    </form>
+
+    <p class="auth-switch">New here? <a href="signup.html">Create an account</a></p>
+
+    <div class="demo-accounts">
+      Demo accounts:
+      <button type="button" data-demo="admin@natakahii.com|admin123">Admin</button> ·
+      <button type="button" data-demo="rahul@example.com|vendor123">Vendor (Rahul Textiles)</button> ·
+      <button type="button" data-demo="priya@example.com|vendor123">Vendor (Priya Electronics)</button> ·
+      <button type="button" data-demo="anita@example.com|customer123">Customer (Anita)</button>
+    </div>
+  </div>
+</div>
+<script src="js/common.js"></script>
+<script>
+  const u = Session.user;
+  if (Session.token && u) location.href = HOME_FOR_ROLE[u.role];
+
+  const errorEl = document.getElementById('loginError');
+  if (new URLSearchParams(location.search).has('expired')) {
+    errorEl.textContent = 'Your session expired. Log in again.';
+    errorEl.classList.remove('hidden');
+  }
+
+  document.querySelectorAll('[data-demo]').forEach(b => b.addEventListener('click', () => {
+    const [email, pw] = b.dataset.demo.split('|');
+    document.getElementById('email').value = email;
+    document.getElementById('password').value = pw;
+  }));
+
+  document.getElementById('loginForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const btn = document.getElementById('loginBtn');
+    errorEl.classList.add('hidden');
+    btn.disabled = true; btn.textContent = 'Logging in…';
+    try {
+      const data = await api('/auth/login', { method: 'POST', body: {
+        email: document.getElementById('email').value.trim(),
+        password: document.getElementById('password').value
+      }});
+      Session.save(data.token, data.user);
+      const next = new URLSearchParams(location.search).get('next');
+      location.href = (next && data.user.role === 'customer') ? next : HOME_FOR_ROLE[data.user.role];
+    } catch (err) {
+      errorEl.textContent = err.message;
+      errorEl.classList.remove('hidden');
+    } finally {
+      btn.disabled = false; btn.textContent = 'Log in';
+    }
+  });
+</script>
+</body>
+</html>

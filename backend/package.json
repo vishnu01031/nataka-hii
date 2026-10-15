@@ -1,0 +1,21 @@
+{
+  "name": "nataka-hii-backend",
+  "version": "2.0.0",
+  "description": "Multi Vendor E-Commerce Platform (Nataka Hii) - Express API on Azure SQL + Azure Blob Storage",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "db:init": "node lib/init-db.js",
+    "db:reset": "node lib/init-db.js --reset"
+  },
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "@azure/storage-blob": "^12.24.0",
+    "applicationinsights": "^2.9.6",
+    "bcryptjs": "^2.4.3",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mssql": "^11.0.1",
+    "multer": "^2.0.2"
+  }
+}

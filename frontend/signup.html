@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Create an account — Nataka Hii</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="auth-page">
+  <div class="auth-card">
+    <div class="auth-logo"><a class="logo" href="index.html" style="text-decoration:none"><span class="navy">Nataka</span> <span class="orange">Hii</span></a></div>
+    <div class="auth-tag">One marketplace, many local sellers</div>
+    <h1>Create an account</h1>
+
+    <p class="auth-error hidden" id="signupError"></p>
+    <p class="auth-success hidden" id="signupSuccess"></p>
+
+    <form id="signupForm">
+      <div class="role-switch" role="radiogroup" aria-label="Account type">
+        <label class="option-card"><input type="radio" name="role" value="customer" checked> I want to shop</label>
+        <label class="option-card"><input type="radio" name="role" value="vendor"> I want to sell</label>
+      </div>
+      <label>Your name <input type="text" id="name" required autocomplete="name"></label>
+      <label id="businessField" class="hidden">Store name <input type="text" id="businessName" placeholder="e.g. Rahul Textiles"></label>
+      <label>Email <input type="email" id="email" required autocomplete="username"></label>
+      <label>Password <input type="password" id="password" required minlength="6" autocomplete="new-password"></label>
+      <button type="submit" class="btn-primary" id="signupBtn">Create account</button>
+    </form>
+
+    <p class="auth-switch">Already have an account? <a href="login.html">Log in</a></p>
+  </div>
+</div>
+<script src="js/common.js"></script>
+<script>
+  const roleInputs = document.querySelectorAll('input[name=role]');
+  const businessField = document.getElementById('businessField');
+  const role = () => document.querySelector('input[name=role]:checked').value;
+  roleInputs.forEach(r => r.addEventListener('change', () => {
+    businessField.classList.toggle('hidden', role() !== 'vendor');
+    document.getElementById('businessName').required = role() === 'vendor';
+  }));
+
+  document.getElementById('signupForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const err = document.getElementById('signupError'), ok = document.getElementById('signupSuccess');
+    const btn = document.getElementById('signupBtn');
+    err.classList.add('hidden'); ok.classList.add('hidden');
+    btn.disabled = true; btn.textContent = 'Creating account…';
+    const chosenRole = role();
+    try {
+      const data = await api('/auth/signup', { method: 'POST', body: {
+        role: chosenRole,
+        name: document.getElementById('name').value.trim(),
+        business_name: document.getElementById('businessName').value.trim(),
+        email: document.getElementById('email').value.trim(),
+        password: document.getElementById('password').value
+      }});
+      ok.textContent = data.message;
+      ok.classList.remove('hidden');
+      e.target.reset();
+      businessField.classList.add('hidden');
+      if (chosenRole === 'customer') setTimeout(() => (location.href = 'login.html'), 1400);
+    } catch (ex) {
+      err.textContent = ex.message;
+      err.classList.remove('hidden');
+    } finally {
+      btn.disabled = false; btn.textContent = 'Create account';
+    }
+  });
+</script>
+</body>
+</html>
