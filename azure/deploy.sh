@@ -105,6 +105,9 @@ if ! az webapp show -g "$RG" -n "$APP" -o none 2>/dev/null; then
     --container-registry-user "$ACR_USER" \
     --container-registry-password "$ACR_PASS" -o none
 fi
+# Set the image address explicitly. Newer CLI versions prepend the registry to
+# --container-image-name, which can produce "<acr>/<acr>/image" - this overrides it.
+az webapp config set -g "$RG" -n "$APP" --linux-fx-version "DOCKER|$ACR_SERVER/$IMAGE:latest" -o none
 
 # Keep an existing JWT secret on re-runs so logged-in users are not signed out
 JWT_SECRET=$(az webapp config appsettings list -g "$RG" -n "$APP" \
@@ -113,6 +116,9 @@ JWT_SECRET=$(az webapp config appsettings list -g "$RG" -n "$APP" \
 
 az webapp config appsettings set -g "$RG" -n "$APP" -o none --settings \
   WEBSITES_PORT=8080 \
+  DOCKER_REGISTRY_SERVER_URL="https://$ACR_SERVER" \
+  DOCKER_REGISTRY_SERVER_USERNAME="$ACR_USER" \
+  DOCKER_REGISTRY_SERVER_PASSWORD="$ACR_PASS" \
   DB_SERVER="$SQL.database.windows.net" \
   DB_NAME="$DB" \
   DB_USER="$SQLUSER" \
